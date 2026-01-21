@@ -1,3 +1,4 @@
+console.time("Training Time");
 //This files generate MLP ANN and train it
 function relu(x){
     return Math.max(0, x);
@@ -17,16 +18,16 @@ function sigmoid_deriv(x){
 
 class NeuralNetwork{
     constructor(){
-        this.w1 = Array.from({length:18}, () =>
-            Array.from({length:9}, () => Math.random()*0.2 - 0.1)
+        this.w1 = Array.from({length:64}, () =>
+            Array.from({length:9}, () => (Math.random() * 1.632) - 0.816)
         );
 
-        this.b1 = Array(18).fill(0);
+        this.b1 = Array(64).fill(0.2);
         
         this.w2 = Array.from({length:9}, ()=>
-            Array.from({length:18}, ()=> Math.random()*0.2 - 0.1)
+            Array.from({length:64}, ()=> Math.random()*0.942 - 0.471)
         )
-        this.b2 = Array(9).fill(0);
+        this.b2 = Array(9).fill(0.2);
     }
 
     forward(x){
@@ -59,11 +60,11 @@ class NeuralNetwork{
         const dz2 = [];
         
         for(let i =0; i<out.length; i++){
-            dz2.push((out[i]-y[i])*sigmoid_deriv(this.z2[i]));
+            dz2.push((out[i]-y[i]));
         }
     
-        const dz1 = Array(18).fill(0);
-        for(let i=0; i<18; i++){
+        const dz1 = Array(64).fill(0);
+        for(let i=0; i<64; i++){
             for(let j=0; j<9; j++){
                 dz1[i] += dz2[j]*this.w2[j][i];
             }
@@ -71,7 +72,7 @@ class NeuralNetwork{
         }
 
         for(let i=0; i<9; i++){
-            for(let j=0; j<18; j++){
+            for(let j=0; j<64; j++){
                 this.w2[i][j] -= lr* dz2[i] * this.a1[j];
             }
 
@@ -80,7 +81,7 @@ class NeuralNetwork{
 
         
 
-        for(let i=0; i<18; i++){
+        for(let i=0; i<64; i++){
             for(let j=0; j<9; j++){
                 this.w1[i][j] -=lr*dz1[i]*x[j];
             }
@@ -106,7 +107,7 @@ for (let epoch = 0; epoch < 5000; epoch++) {
     data.sort(() => Math.random() - 0.5); // shuffle at start
 
     for (const sample of data) {
-        nn.train(sample.x, sample.y, 0.1);
+        nn.train(sample.x, sample.y, 0.001);
     }
 
     // Calculate loss after this epoch
@@ -119,3 +120,5 @@ for (let epoch = 0; epoch < 5000; epoch++) {
     console.log('Epoch', epoch, 'Loss:', loss.toFixed(2));
 }
 }
+
+console.timeEnd("Training Time");

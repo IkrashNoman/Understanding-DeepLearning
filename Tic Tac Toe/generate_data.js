@@ -30,6 +30,14 @@ function availableMoves(board) {
 }
 
 // ===============================
+// HELPER: NORMALIZATION
+// ===============================
+// Crucial: Network always sees "1" as itself and "-1" as opponent.
+function normalizeBoard(board, player) {
+  return board.map(v => v * player);
+}
+
+// ===============================
 // METHOD 1: RULE-BASED (bestMove)
 // ===============================
 
@@ -79,7 +87,11 @@ function generateRuleBasedDataset(games = 5000) {
       const move = bestMove(board, player);
       if (move === undefined) break;
 
-      const x = [...board];
+      // FIX APPLIED HERE:
+      // Old code: const x = [...board]; (Incorrect - confusing the network)
+      // New code: Normalize so the network knows whose turn it is.
+      const x = normalizeBoard(board, player);
+      
       const y = Array(9).fill(0);
       y[move] = 1;
       dataset.push({ x, y });
@@ -131,10 +143,6 @@ function minimax(board, player) {
   return { score: bestScore, move: bestMove };
 }
 
-function normalizeBoard(board, player) {
-  return board.map(v => v * player);
-}
-
 function generateMinimaxDataset(games = 2000) {
   const dataset = [];
 
@@ -166,6 +174,8 @@ function generateMinimaxDataset(games = 2000) {
 // ===============================
 // MAIN
 // ===============================
+
+console.log("Generating datasets... this might take a moment.");
 
 const ruleDataset = generateRuleBasedDataset(5000);
 const minimaxDataset = generateMinimaxDataset(2000);

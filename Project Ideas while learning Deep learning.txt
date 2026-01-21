@@ -1,0 +1,3 @@
+Project Ideas while learning Deep learning 
+to know how much I have understanding of deep learning and am I a procrastinator or a correctly motivated person.
+1- Tic Tac Toe using ANN (From scratch)

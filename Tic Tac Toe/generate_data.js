@@ -1,22 +1,37 @@
-//This code is in node js
-const fs = require("fs"); 
+const fs = require("fs");
+
+// ===============================
+// UTILS
+// ===============================
+
+const WIN_LINES = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+
 function checkWinner(board) {
-  const wins = [
-    [0,1,2],[3,4,5],[6,7,8],
-    [0,3,6],[1,4,7],[2,5,8],
-    [0,4,8],[2,4,6]
-  ];
-  for (const [a,b,c] of wins) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+  for (const [a,b,c] of WIN_LINES) {
+    if (board[a] !== 0 && board[a] === board[b] && board[a] === board[c]) {
       return board[a];
     }
   }
   return null;
 }
 
-function availableMoves(board) {
-  return board.map((v,i) => v === 0 ? i : null).filter(v => v !== null);
+function isFull(board) {
+  return board.every(v => v !== 0);
 }
+
+function availableMoves(board) {
+  return board
+    .map((v, i) => v === 0 ? i : null)
+    .filter(v => v !== null);
+}
+
+// ===============================
+// METHOD 1: RULE-BASED (bestMove)
+// ===============================
 
 function bestMove(board, player) {
   const opponent = -player;
@@ -53,43 +68,115 @@ function bestMove(board, player) {
   return moves[Math.floor(Math.random() * moves.length)];
 }
 
-// ===============================
-// GENERATE DATA
-// ===============================
+function generateRuleBasedDataset(games = 5000) {
+  const dataset = [];
 
-const dataset = [];
-const GAMES = 5000;
+  for (let g = 0; g < games; g++) {
+    let board = Array(9).fill(0);
+    let player = 1;
 
-for (let g = 0; g < GAMES; g++) {
-  let board = Array(9).fill(0);
-  let player = 1;
+    while (true) {
+      const move = bestMove(board, player);
+      if (move === undefined) break;
 
-  while (true) {
-    const move = bestMove(board, player);
-    if (move === undefined) break;
+      const x = [...board];
+      const y = Array(9).fill(0);
+      y[move] = 1;
+      dataset.push({ x, y });
 
-    // Save training example
-    const x = [...board];
-    const y = Array(9).fill(0);
-    y[move] = 1;
-    dataset.push({ x, y });
+      board[move] = player;
 
-    board[move] = player;
+      if (checkWinner(board) || availableMoves(board).length === 0) {
+        break;
+      }
 
-    if (checkWinner(board) || availableMoves(board).length === 0) {
-      break;
+      player *= -1;
     }
-
-    player *= -1;
   }
+
+  return dataset;
 }
 
-console.log(JSON.stringify(dataset));
+// ===============================
+// METHOD 2: MINIMAX
+// ===============================
 
-fs.writeFileSync(
-  "data.json",
-  JSON.stringify(dataset, null, 2),
-  "utf8"
-);
+function minimax(board, player) {
+  const winner = checkWinner(board);
+  if (winner === 1) return { score: 1 };
+  if (winner === -1) return { score: -1 };
+  if (isFull(board)) return { score: 0 };
 
-console.log("✅ Dataset saved to data.json");
+  let bestMove = null;
+  let bestScore = player === 1 ? -Infinity : Infinity;
+
+  for (const move of availableMoves(board)) {
+    board[move] = player;
+    const result = minimax(board, -player);
+    board[move] = 0;
+
+    if (player === 1) {
+      if (result.score > bestScore) {
+        bestScore = result.score;
+        bestMove = move;
+      }
+    } else {
+      if (result.score < bestScore) {
+        bestScore = result.score;
+        bestMove = move;
+      }
+    }
+  }
+
+  return { score: bestScore, move: bestMove };
+}
+
+function normalizeBoard(board, player) {
+  return board.map(v => v * player);
+}
+
+function generateMinimaxDataset(games = 2000) {
+  const dataset = [];
+
+  for (let g = 0; g < games; g++) {
+    let board = Array(9).fill(0);
+    let player = 1;
+
+    while (true) {
+      const result = minimax(board, player);
+      if (result.move === undefined) break;
+
+      const x = normalizeBoard(board, player);
+      const y = Array(9).fill(0);
+      y[result.move] = 1;
+
+      dataset.push({ x, y });
+
+      board[result.move] = player;
+
+      if (checkWinner(board) || isFull(board)) break;
+
+      player *= -1;
+    }
+  }
+
+  return dataset;
+}
+
+// ===============================
+// MAIN
+// ===============================
+
+const ruleDataset = generateRuleBasedDataset(5000);
+const minimaxDataset = generateMinimaxDataset(2000);
+
+const finalData = {
+  ruleBased: ruleDataset,
+  minimax: minimaxDataset
+};
+
+fs.writeFileSync("data.json", JSON.stringify(finalData, null, 2), "utf8");
+
+console.log("✅ Saved both datasets to data.json");
+console.log("Rule-based samples:", ruleDataset.length);
+console.log("Minimax samples:", minimaxDataset.length);

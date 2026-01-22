@@ -105,7 +105,7 @@ const nn = new NeuralNetwork();
 
 const LR = 0.001; 
 
-for (let epoch = 0; epoch < 200; epoch++) { 
+for (let epoch = 0; epoch < 5000; epoch++) { 
     data.sort(() => Math.random() - 0.5); // shuffle at start
 
     for (const sample of data) {

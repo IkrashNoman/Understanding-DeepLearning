@@ -32,139 +32,111 @@ function availableMoves(board) {
 // ===============================
 // HELPER: NORMALIZATION
 // ===============================
-// Crucial: Network always sees "1" as itself and "-1" as opponent.
 function normalizeBoard(board, player) {
   return board.map(v => v * player);
 }
 
 // ===============================
-// METHOD 1: RULE-BASED (bestMove)
+// OPTIMIZED MINIMAX (With Memoization)
 // ===============================
 
-function bestMove(board, player) {
-  const opponent = -player;
-
-  // 1. Win
-  for (const i of availableMoves(board)) {
-    board[i] = player;
-    if (checkWinner(board) === player) {
-      board[i] = 0;
-      return i;
-    }
-    board[i] = 0;
-  }
-
-  // 2. Block
-  for (const i of availableMoves(board)) {
-    board[i] = opponent;
-    if (checkWinner(board) === opponent) {
-      board[i] = 0;
-      return i;
-    }
-    board[i] = 0;
-  }
-
-  // 3. Center
-  if (board[4] === 0) return 4;
-
-  // 4. Corners
-  const corners = [0,2,6,8].filter(i => board[i] === 0);
-  if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
-
-  // 5. Any
-  const moves = availableMoves(board);
-  return moves[Math.floor(Math.random() * moves.length)];
-}
-
-function generateRuleBasedDataset(games = 5000) {
-  const dataset = [];
-
-  for (let g = 0; g < games; g++) {
-    let board = Array(9).fill(0);
-    let player = 1;
-
-    while (true) {
-      const move = bestMove(board, player);
-      if (move === undefined) break;
-
-      // FIX APPLIED HERE:
-      // Old code: const x = [...board]; (Incorrect - confusing the network)
-      // New code: Normalize so the network knows whose turn it is.
-      const x = normalizeBoard(board, player);
-      
-      const y = Array(9).fill(0);
-      y[move] = 1;
-      dataset.push({ x, y });
-
-      board[move] = player;
-
-      if (checkWinner(board) || availableMoves(board).length === 0) {
-        break;
-      }
-
-      player *= -1;
-    }
-  }
-
-  return dataset;
-}
-
-// ===============================
-// METHOD 2: MINIMAX
-// ===============================
+// Global Cache for Minimax
+const memo = new Map();
 
 function minimax(board, player) {
+  // Create a unique key for this board state
+  const key = board.toString() + player;
+  if (memo.has(key)) return memo.get(key);
+
   const winner = checkWinner(board);
-  if (winner === 1) return { score: 1 };
-  if (winner === -1) return { score: -1 };
+  if (winner === player) return { score: 10 };
+  if (winner === -player) return { score: -10 };
   if (isFull(board)) return { score: 0 };
 
   let bestMove = null;
-  let bestScore = player === 1 ? -Infinity : Infinity;
+  let bestScore = -Infinity;
 
-  for (const move of availableMoves(board)) {
+  const moves = availableMoves(board);
+
+  for (const move of moves) {
     board[move] = player;
+    
     const result = minimax(board, -player);
-    board[move] = 0;
+    
+    board[move] = 0; 
 
-    if (player === 1) {
-      if (result.score > bestScore) {
-        bestScore = result.score;
-        bestMove = move;
-      }
-    } else {
-      if (result.score < bestScore) {
-        bestScore = result.score;
-        bestMove = move;
-      }
+    const score = -result.score; 
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = move;
     }
   }
 
-  return { score: bestScore, move: bestMove };
+  const result = { score: bestScore, move: bestMove };
+  memo.set(key, result); // Save result to cache
+  return result;
 }
 
-function generateMinimaxDataset(games = 2000) {
+function generateMinimaxDataset(samples = 15000) {
   const dataset = [];
+  const uniqueHashes = new Set();
+  
+  // Clear cache before starting
+  memo.clear();
 
-  for (let g = 0; g < games; g++) {
+  console.log(`Generating ${samples} robust samples...`);
+
+  let attempts = 0;
+  
+  while (dataset.length < samples) {
+    attempts++;
+    
+    // Safety Break
+    if (attempts > samples * 5) {
+        console.log("Max attempts reached. Stopping.");
+        break;
+    }
+
     let board = Array(9).fill(0);
     let player = 1;
 
-    while (true) {
-      const result = minimax(board, player);
-      if (result.move === undefined) break;
+    // 1. Create a "Random Messy State"
+    const randomMovesCount = Math.floor(Math.random() * 9);
+    let validState = true;
 
-      const x = normalizeBoard(board, player);
-      const y = Array(9).fill(0);
-      y[result.move] = 1;
+    for (let i = 0; i < randomMovesCount; i++) {
+      const moves = availableMoves(board);
+      if (moves.length === 0 || checkWinner(board)) {
+        validState = false; 
+        break;
+      }
+      const randomMove = moves[Math.floor(Math.random() * moves.length)];
+      board[randomMove] = player;
+      player *= -1; 
+    }
 
-      dataset.push({ x, y });
+    if (!validState) continue;
 
-      board[result.move] = player;
+    // 2. Ask Minimax (Now Instant thanks to Cache)
+    const result = minimax(board, player);
 
-      if (checkWinner(board) || isFull(board)) break;
+    if (result.move === null) continue;
 
-      player *= -1;
+    // 3. Normalize & Save
+    const x = normalizeBoard(board, player);
+    const y = Array(9).fill(0);
+    y[result.move] = 1;
+
+    const hash = x.toString() + player; 
+    if (!uniqueHashes.has(hash)) {
+       uniqueHashes.add(hash);
+       dataset.push({ x, y });
+       
+       // Progress Log
+       if (dataset.length % 1000 === 0) {
+           console.log(`Generated ${dataset.length}/${samples} samples...`);
+       }
     }
   }
 
@@ -175,10 +147,9 @@ function generateMinimaxDataset(games = 2000) {
 // MAIN
 // ===============================
 
-console.log("Generating minmax dataset... this might take a moment.");
+console.log("Generating minmax dataset...");
 
-//const ruleDataset = generateRuleBasedDataset(5000);
-const minimaxDataset = generateMinimaxDataset(12000);
+const minimaxDataset = generateMinimaxDataset(100000); // 10k is plenty for Tic-Tac-Toe
 
 const finalData = {
   ruleBased: [],
@@ -187,6 +158,4 @@ const finalData = {
 
 fs.writeFileSync("data.json", JSON.stringify(finalData, null, 2), "utf8");
 
-// console.log("✅ Saved both datasets to data.json");
-// console.log("Rule-based samples:", ruleDataset.length);
-console.log("Minimax samples:", minimaxDataset.length);
+console.log("✅ Done! Minimax samples:", minimaxDataset.length);

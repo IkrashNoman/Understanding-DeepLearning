@@ -175,18 +175,18 @@ function generateMinimaxDataset(games = 2000) {
 // MAIN
 // ===============================
 
-console.log("Generating datasets... this might take a moment.");
+console.log("Generating minmax dataset... this might take a moment.");
 
-const ruleDataset = generateRuleBasedDataset(5000);
-const minimaxDataset = generateMinimaxDataset(2000);
+//const ruleDataset = generateRuleBasedDataset(5000);
+const minimaxDataset = generateMinimaxDataset(12000);
 
 const finalData = {
-  ruleBased: ruleDataset,
+  ruleBased: [],
   minimax: minimaxDataset
 };
 
 fs.writeFileSync("data.json", JSON.stringify(finalData, null, 2), "utf8");
 
-console.log("✅ Saved both datasets to data.json");
-console.log("Rule-based samples:", ruleDataset.length);
+// console.log("✅ Saved both datasets to data.json");
+// console.log("Rule-based samples:", ruleDataset.length);
 console.log("Minimax samples:", minimaxDataset.length);

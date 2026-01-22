@@ -103,22 +103,38 @@ const data = [...jsonData.ruleBased, ...jsonData.minimax];
 
 const nn = new NeuralNetwork();
 
-for (let epoch = 0; epoch < 5000; epoch++) { 
+const LR = 0.001; 
+
+for (let epoch = 0; epoch < 1000; epoch++) { 
     data.sort(() => Math.random() - 0.5); // shuffle at start
 
     for (const sample of data) {
-        nn.train(sample.x, sample.y, 0.001);
+        nn.train(sample.x, sample.y, LR);
     }
 
-    // Calculate loss after this epoch
-    let loss = 0;
-    for (const sample of data) {
-        const out = nn.forward(sample.x);
-        loss += out.reduce((s, o, i) => s + (o - sample.y[i])**2, 0);
-    }
+    // Calculate loss AND ACCURACY after this epoch
     if(epoch % 100 === 0){
-    console.log('Epoch', epoch, 'Loss:', loss.toFixed(2));
-}
-}
+        let loss = 0;
+        let correct = 0;
 
-console.timeEnd("Training Time");
+        for (const sample of data) {
+            const out = nn.forward(sample.x);
+            
+            // Your Original MSE Loss Calculation
+            loss += out.reduce((s, o, i) => s + (o - sample.y[i])**2, 0);
+
+            // ACCURACY CHECK
+            // Find which index the network thinks is the best move
+            const predictedMove = out.indexOf(Math.max(...out));
+            // Find the actual best move (where the 1 is)
+            const actualMove = sample.y.indexOf(1);
+
+            if (predictedMove === actualMove) {
+                correct++;
+            }
+        }
+        
+        const accuracy = (correct / data.length * 100).toFixed(2);
+        console.log(`Epoch ${epoch} | Loss: ${loss.toFixed(2)} | Accuracy: ${accuracy}%`);
+    }
+}

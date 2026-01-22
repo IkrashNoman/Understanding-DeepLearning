@@ -105,7 +105,7 @@ const nn = new NeuralNetwork();
 
 const LR = 0.001; 
 
-for (let epoch = 0; epoch < 1000; epoch++) { 
+for (let epoch = 0; epoch < 200; epoch++) { 
     data.sort(() => Math.random() - 0.5); // shuffle at start
 
     for (const sample of data) {
@@ -113,7 +113,7 @@ for (let epoch = 0; epoch < 1000; epoch++) {
     }
 
     // Calculate loss AND ACCURACY after this epoch
-    if(epoch % 100 === 0){
+    if(epoch % 50 === 0){
         let loss = 0;
         let correct = 0;
 
@@ -138,3 +138,17 @@ for (let epoch = 0; epoch < 1000; epoch++) {
         console.log(`Epoch ${epoch} | Loss: ${loss.toFixed(2)} | Accuracy: ${accuracy}%`);
     }
 }
+
+console.timeEnd('Training Time')
+
+const weights = {
+    w1: nn.w1,
+    w2: nn.w2,
+    b1: nn.b1,
+    b2:nn.b2,
+    a1: nn.a1,
+    a2: nn.a2
+}
+
+fs.writeFileSync("weight.json", JSON.stringify(weights), "utf8");
+console.log('Weights are saved! ');

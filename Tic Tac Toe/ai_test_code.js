@@ -113,14 +113,14 @@ try {
     // CRITICAL FIX: Lower Learning Rate for Cross-Entropy
     const LEARNING_RATE = 0.0005; 
 
-    for (let epoch = 0; epoch <= 1000; epoch++) { 
+    for (let epoch = 0; epoch <= 200; epoch++) { 
         data.sort(() => Math.random() - 0.5); 
 
         for (const sample of data) {
             nn.train(sample.x, sample.y, LEARNING_RATE);
         }
 
-        if (epoch % 100 === 0) {
+        if (epoch % 50 === 0) {
             let loss = 0;
             let correct = 0;
             

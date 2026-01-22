@@ -136,38 +136,88 @@ function resetGame() {
 // AI MOVE FUNCTION - INTEGRATE YOUR ANN HERE
 // ========================================
 
+fetch('weight.json')
+  .then(res => res.json())
+  .then(weights => {
+
+    const AI = {
+      w1: weights.w1,
+      b1: weights.b1,
+      w2: weights.w2,
+      b2: weights.b2,
+
+      relu: x => Math.max(0, x),
+      sigmoid: x => 1 / (1 + Math.exp(-x)),
+
+      predict(boardInput) {
+        let z1 = [];
+        for (let i = 0; i < 64; i++) {
+          let sum = this.b1[i];
+          for (let j = 0; j < 9; j++) {
+            sum += this.w1[i][j] * boardInput[j];
+          }
+          z1.push(this.relu(sum));
+        }
+
+        let output = [];
+        for (let i = 0; i < 9; i++) {
+          let sum = this.b2[i];
+          for (let j = 0; j < 64; j++) {
+            sum += this.w2[i][j] * z1[j];
+          }
+          output.push(this.sigmoid(sum));
+        }
+        return output;
+      }
+    };
+
+    window.AI = AI; // make it accessible to aiMove
+    console.log("AI loaded successfully");
+  });
+
+
+console.log("WORKING FINE AND NICE");
 function aiMove() {
     if (!gameState.gameActive) return;
     
     // Get AI player symbol
-    const aiPlayer = gameState.playerChoice === 1 ? 'O' : 'X';
-    
+    const aiSymbol = gameState.playerChoice === 1 ? 'O' : 'X';
+    const playerSymbol = gameState.playerChoice === 1 ? 'X' : 'O';
     // *** YOUR ANN CODE GOES HERE ***
-    // 
-    // The current board state is in: gameState.board
-    // It's an array of 9 elements: ['X', '', 'O', '', '', '', '', '', '']
-    // Empty cells are represented by empty strings ''
-    // 
-    // Your ANN should:
-    // 1. Take gameState.board as input
-    // 2. Process it through your neural network
-    // 3. Return the index (0-8) of the best move
-    //
-    // Example integration:
-    // const moveIndex = yourANN.predict(gameState.board);
-    
-    // TEMPORARY: Random move for demonstration
+   const inputBoard = gameState.board.map(cell => {
+    if(cell === aiSymbol) return 1;
+    if(cell === playerSymbol ) return -1;
+    return 0;
+   })
+
+   const predictions = AI.predict(inputBoard);
+
+   let bestMoveIndex = -1;
+   let bestScore = -Infinity;
+
+   for(let i=0; i<9; i++){
+    if(gameState.board[i] === ''){
+        if(predictions[i]> bestScore){
+            bestScore = predictions[i];
+            bestMoveIndex = i;
+        }
+    }
+   }
+   
+   if (bestMoveIndex === -1){
     // Replace this with your ANN prediction
+    console.log("No Best Move");
     const availableMoves = gameState.board
         .map((cell, index) => cell === '' ? index : null)
         .filter(index => index !== null);
     
     console.log("Your available moves are: ", availableMoves)
-    
-    const moveIndex = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+
+    bestMoveIndex = availableMoves[Math.floor(Math.random() * availableMoves.length)];
     // *** END OF ANN INTEGRATION SECTION ***
-    
-    makeMove(moveIndex, aiPlayer);
+   }
+
+    makeMove(bestMoveIndex, aiSymbol);
     
     if (!checkGameEnd()) {
         gameState.isPlayerTurn = true;

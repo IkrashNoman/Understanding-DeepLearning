@@ -4,16 +4,23 @@ function relu(x){
     return Math.max(0, x);
 }
 
-function sigmoid(x){
-    return 1/(1 + Math.exp(-x));
-}
+// function sigmoid(x){
+//     return 1/(1 + Math.exp(-x));
+// }
 
 function relu_deriv(x){
     return x>0 ? 1 : 0;
 }
 
-function sigmoid_deriv(x){
-    return sigmoid(x) * (1 - sigmoid(x));
+// function sigmoid_deriv(x){
+//     return sigmoid(x) * (1 - sigmoid(x));
+// }
+
+function softmax(z){
+    const max = Math.max(...z);
+    const exp = z.map(v => Math.exp(v-max));
+    const sum = exp.reduce((a, b) => a+b, 0);
+    return exp.map(v => v/sum);
 }
 
 class NeuralNetwork{
@@ -49,7 +56,8 @@ class NeuralNetwork{
             this.z2 = this.w2.map((row, i)=> row.reduce((s, w, j) => s+w*this.a1[j], this.b2[i])
         );
         
-        this.a2 = this.z2.map(sigmoid);
+        this.a2 = softmax(this.z2);
+        //this.a2 = this.z2.map(sigmoid);
         
         return this.a2;
     }
@@ -99,13 +107,19 @@ const raw = fs.readFileSync('data.json');
 const jsonData = JSON.parse(raw);
 
 // Merge rule-based and minimax into one array
-const data = [...jsonData.ruleBased, ...jsonData.minimax];
+//const data = [...jsonData.ruleBased, ...jsonData.minimax];
+
+//Only RuleBased Data
+const data = jsonData.ruleBased;
+
+//Only minimax
+//const data = jsonData.minimax;
 
 const nn = new NeuralNetwork();
 
-const LR = 0.001; 
+const LR = 0.01; 
 
-for (let epoch = 0; epoch < 5000; epoch++) { 
+for (let epoch = 0; epoch < 1000; epoch++) { 
     data.sort(() => Math.random() - 0.5); // shuffle at start
 
     for (const sample of data) {
@@ -121,8 +135,11 @@ for (let epoch = 0; epoch < 5000; epoch++) {
             const out = nn.forward(sample.x);
             
             // Your Original MSE Loss Calculation
-            loss += out.reduce((s, o, i) => s + (o - sample.y[i])**2, 0);
-
+            //loss += out.reduce((s, o, i) => s + (o - sample.y[i])**2, 0);
+            
+            //Softmax Loss
+            const idx = sample.y.indexOf(1);
+            loss += -Math.log(out[idx] + 1e-19)
             // ACCURACY CHECK
             // Find which index the network thinks is the best move
             const predictedMove = out.indexOf(Math.max(...out));

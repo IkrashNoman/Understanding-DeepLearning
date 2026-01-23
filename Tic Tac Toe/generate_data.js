@@ -29,22 +29,102 @@ function availableMoves(board) {
     .filter(v => v !== null);
 }
 
-// ===============================
-// HELPER: NORMALIZATION
-// ===============================
 function normalizeBoard(board, player) {
   return board.map(v => v * player);
 }
 
 // ===============================
-// OPTIMIZED MINIMAX (With Memoization)
+// LOGIC: RULE-BASED
 // ===============================
 
-// Global Cache for Minimax
+function getRuleBasedMove(board, player) {
+  const moves = availableMoves(board);
+  if (moves.length === 0) return null;
+
+  // 1. WIN
+  for (let move of moves) {
+    board[move] = player;
+    if (checkWinner(board) === player) {
+      board[move] = 0;
+      return move;
+    }
+    board[move] = 0;
+  }
+
+  // 2. BLOCK
+  const opponent = -player;
+  for (let move of moves) {
+    board[move] = opponent;
+    if (checkWinner(board) === opponent) {
+      board[move] = 0;
+      return move;
+    }
+    board[move] = 0;
+  }
+
+  // 3. CENTER
+  if (board[4] === 0) return 4;
+
+  // 4. RANDOM CORNER
+  const corners = [0, 2, 6, 8].filter(i => board[i] === 0);
+  if (corners.length > 0) {
+    return corners[Math.floor(Math.random() * corners.length)];
+  }
+
+  // 5. RANDOM SIDE
+  return moves[Math.floor(Math.random() * moves.length)];
+}
+
+function generateRuleBasedDataset(samples) {
+  const dataset = [];
+  console.log(`Generating ${samples} Rule-Based samples (Allowing Duplicates)...`);
+
+  // Loop strictly until we hit the count
+  while (dataset.length < samples) {
+    let board = Array(9).fill(0);
+    let player = 1;
+
+    // Create Random State
+    const randomMovesCount = Math.floor(Math.random() * 8); 
+    let validState = true;
+
+    for (let i = 0; i < randomMovesCount; i++) {
+      const moves = availableMoves(board);
+      if (moves.length === 0 || checkWinner(board)) {
+        validState = false; 
+        break;
+      }
+      const randomMove = moves[Math.floor(Math.random() * moves.length)];
+      board[randomMove] = player;
+      player *= -1; 
+    }
+
+    if (!validState || checkWinner(board) || isFull(board)) continue;
+
+    // Get Move
+    const bestMove = getRuleBasedMove(board, player);
+    if (bestMove === null) continue;
+
+    // Save WITHOUT checking uniqueness
+    const x = normalizeBoard(board, player);
+    const y = Array(9).fill(0);
+    y[bestMove] = 1;
+
+    dataset.push({ x, y });
+
+    if (dataset.length % 5000 === 0) process.stdout.write(`R: ${dataset.length} `);
+  }
+  console.log("\nRule-Based Done.");
+  return dataset;
+}
+
+// ===============================
+// LOGIC: MINIMAX
+// ===============================
+
 const memo = new Map();
 
 function minimax(board, player) {
-  // Create a unique key for this board state
   const key = board.toString() + player;
   if (memo.has(key)) return memo.get(key);
 
@@ -60,11 +140,8 @@ function minimax(board, player) {
 
   for (const move of moves) {
     board[move] = player;
-    
     const result = minimax(board, -player);
-    
     board[move] = 0; 
-
     const score = -result.score; 
 
     if (score > bestScore) {
@@ -74,34 +151,20 @@ function minimax(board, player) {
   }
 
   const result = { score: bestScore, move: bestMove };
-  memo.set(key, result); // Save result to cache
+  memo.set(key, result);
   return result;
 }
 
-function generateMinimaxDataset(samples = 15000) {
+function generateMinimaxDataset(samples) {
   const dataset = [];
-  const uniqueHashes = new Set();
-  
-  // Clear cache before starting
   memo.clear();
+  console.log(`Generating ${samples} Minimax samples (Allowing Duplicates)...`);
 
-  console.log(`Generating ${samples} robust samples...`);
-
-  let attempts = 0;
-  
   while (dataset.length < samples) {
-    attempts++;
-    
-    // Safety Break
-    if (attempts > samples * 5) {
-        console.log("Max attempts reached. Stopping.");
-        break;
-    }
-
     let board = Array(9).fill(0);
     let player = 1;
 
-    // 1. Create a "Random Messy State"
+    // Create Random State
     const randomMovesCount = Math.floor(Math.random() * 9);
     let validState = true;
 
@@ -118,28 +181,19 @@ function generateMinimaxDataset(samples = 15000) {
 
     if (!validState) continue;
 
-    // 2. Ask Minimax (Now Instant thanks to Cache)
     const result = minimax(board, player);
-
     if (result.move === null) continue;
 
-    // 3. Normalize & Save
     const x = normalizeBoard(board, player);
     const y = Array(9).fill(0);
     y[result.move] = 1;
 
-    const hash = x.toString() + player; 
-    if (!uniqueHashes.has(hash)) {
-       uniqueHashes.add(hash);
-       dataset.push({ x, y });
-       
-       // Progress Log
-       if (dataset.length % 1000 === 0) {
-           console.log(`Generated ${dataset.length}/${samples} samples...`);
-       }
-    }
-  }
+    // Save WITHOUT checking uniqueness
+    dataset.push({ x, y });
 
+    if (dataset.length % 5000 === 0) process.stdout.write(`M: ${dataset.length} `);
+  }
+  console.log("\nMinimax Done.");
   return dataset;
 }
 
@@ -147,15 +201,21 @@ function generateMinimaxDataset(samples = 15000) {
 // MAIN
 // ===============================
 
-console.log("Generating minmax dataset...");
+const TARGET_SAMPLES = 50000;
 
-const minimaxDataset = generateMinimaxDataset(100000); // 10k is plenty for Tic-Tac-Toe
+console.log(`Starting Brutal Generation: ${TARGET_SAMPLES} samples per method.`);
+
+// 1. Generate Rule Based
+const ruleData = generateRuleBasedDataset(TARGET_SAMPLES);
+
+// 2. Generate Minimax
+const minimaxData = generateMinimaxDataset(TARGET_SAMPLES);
 
 const finalData = {
-  ruleBased: [],
-  minimax: minimaxDataset
+  ruleBased: ruleData,
+  minimax: minimaxData
 };
 
 fs.writeFileSync("data.json", JSON.stringify(finalData, null, 2), "utf8");
 
-console.log("✅ Done! Minimax samples:", minimaxDataset.length);
+console.log(`\n✅Generated ${minimaxData.length + ruleData.length} total samples.`);

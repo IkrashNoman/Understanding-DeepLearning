@@ -120,7 +120,7 @@ const nn = new NeuralNetwork();
 const LR = 0.01; 
 
 for (let epoch = 0; epoch < 1000; epoch++) { 
-    data.sort(() => Math.random() - 0.5); // shuffle at start
+    data.sort(() => Math.random() - 0.5);
 
     for (const sample of data) {
         nn.train(sample.x, sample.y, LR);
@@ -140,10 +140,8 @@ for (let epoch = 0; epoch < 1000; epoch++) {
             //Softmax Loss
             const idx = sample.y.indexOf(1);
             loss += -Math.log(out[idx] + 1e-19)
-            // ACCURACY CHECK
-            // Find which index the network thinks is the best move
+
             const predictedMove = out.indexOf(Math.max(...out));
-            // Find the actual best move (where the 1 is)
             const actualMove = sample.y.indexOf(1);
 
             if (predictedMove === actualMove) {

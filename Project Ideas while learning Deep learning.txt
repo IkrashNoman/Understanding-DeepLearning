@@ -1,4 +1,5 @@
 Project Ideas while learning Deep learning 
 to know how much I have understanding of deep learning and am I a procrastinator or a correctly motivated person.
 1- Tic Tac Toe using ANN (From scratch)
-2- Rock Paper Scissors using only ANN (No CNN not GAN or RNN)
+2- Rock Paper Scissors using only ANN (No CNN not GAN or RNN) (Delayed)
+3- Snake Game using only ANN
